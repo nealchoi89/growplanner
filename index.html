@@ -2381,42 +2381,43 @@ const provider = new GoogleAuthProvider();
 var syncTimer=null;
 var currentUserId=null;
 
-function setSyncStatus(msg,color){
-  var el=document.getElementById('sync-status');
-  if(el){el.textContent=msg;el.style.color=color||'rgba(255,255,255,0.5)';}
+function updateStatus(msg){
+  var btn=document.getElementById('login-btn');
+  var mbtn=document.getElementById('mobile-login-btn');
+  if(btn&&currentUserId) btn.textContent='👤 '+(btn.dataset.name||'')+' · '+msg;
+  if(mbtn&&currentUserId) mbtn.innerHTML='<span class="mn-icon">👤</span><span>'+msg+'</span>';
 }
 
 async function syncToCloud(){
   if(!currentUserId)return;
   try{
-    setSyncStatus('Syncing...','#F5A623');
+    updateStatus('Syncing...');
     var data={};
     for(var i=0;i<localStorage.length;i++){
       var k=localStorage.key(i);
       if(k&&k.startsWith('grow_'))data[k]=localStorage.getItem(k);
     }
     await setDoc(doc(db,'users',currentUserId),{data:data,updated:Date.now()});
-    setSyncStatus('✓ Synced','#50C878');
-  }catch(e){setSyncStatus('Sync failed','#E8614A');}
+    updateStatus('✓ Synced');
+  }catch(e){updateStatus('Sync failed');}
 }
 
 async function syncFromCloud(){
   if(!currentUserId)return;
   try{
-    setSyncStatus('Loading...','#F5A623');
+    updateStatus('Loading...');
     var snap=await getDoc(doc(db,'users',currentUserId));
     if(snap.exists()){
       var data=snap.data().data||{};
       Object.keys(data).forEach(function(k){localStorage.setItem(k,data[k]);});
-      setSyncStatus('✓ Synced','#50C878');
+      updateStatus('✓ Synced');
       if(typeof render==='function')render();
     }else{
       await syncToCloud();
     }
-  }catch(e){setSyncStatus('Offline','#E8614A');}
+  }catch(e){updateStatus('Offline');}
 }
 
-// Auto sync on data change
 var _orig=localStorage.setItem.bind(localStorage);
 localStorage.setItem=function(k,v){
   _orig(k,v);
@@ -2426,6 +2427,20 @@ localStorage.setItem=function(k,v){
   }
 };
 
+function updateLoginBtn(user){
+  var btn=document.getElementById('login-btn');
+  var mbtn=document.getElementById('mobile-login-btn');
+  var name=user?user.displayName.split(' ')[0]:'';
+  if(btn){
+    if(user){btn.dataset.name=name;btn.textContent='👤 '+name;btn.onclick=window.googleLogout;}
+    else{btn.textContent='🔑 Sign in';btn.onclick=window.googleLogin;}
+  }
+  if(mbtn){
+    if(user){mbtn.dataset.name=name;mbtn.innerHTML='<span class="mn-icon">👤</span><span>'+name+'</span>';mbtn.onclick=window.googleLogout;}
+    else{mbtn.innerHTML='<span class="mn-icon">🔑</span><span>Sign in</span>';mbtn.onclick=window.googleLogin;}
+  }
+}
+
 window.googleLogin=async function(){
   try{await signInWithPopup(auth,provider);}
   catch(e){alert('Login failed: '+e.message);}
@@ -2434,48 +2449,8 @@ window.googleLogin=async function(){
 window.googleLogout=async function(){
   await signOut(auth);
   currentUserId=null;
-  setSyncStatus('Not signed in','rgba(255,255,255,0.4)');
   updateLoginBtn(null);
 };
-
-function updateLoginBtn(user){
-  var btn=document.getElementById('login-btn');
-  var mbtn=document.getElementById('mobile-login-btn');
-  var name=user?user.displayName.split(' ')[0]:'';
-  if(btn){
-    if(user){
-      btn.dataset.name=name;
-      btn.textContent='👤 '+name;
-      btn.onclick=window.googleLogout;
-    }else{
-      btn.textContent='🔑 Sign in';
-      btn.onclick=window.googleLogin;
-    }
-  }
-  if(mbtn){
-    if(user){
-      mbtn.dataset.name=name;
-      mbtn.innerHTML='<span class="mn-icon">👤</span><span>'+name+'</span>';
-      mbtn.onclick=window.googleLogout;
-    }else{
-      mbtn.innerHTML='<span class="mn-icon">🔑</span><span>Sign in</span>';
-      mbtn.onclick=window.googleLogin;
-    }
-  }
-}
-
-function setSyncStatus(msg,color){
-  var btn=document.getElementById('login-btn');
-  if(btn&&currentUserId){
-    var name=btn.dataset.name||'';
-    btn.textContent='👤 '+name+(msg?' · '+msg:'');
-  }
-  var mbtn=document.getElementById('mobile-login-btn');
-  if(mbtn&&currentUserId){
-    var mname=mbtn.dataset.name||'';
-    mbtn.innerHTML='<span class="mn-icon">👤</span><span>'+(msg?msg:'✓')+'</span>';
-  }
-}
 
 onAuthStateChanged(auth,function(user){
   if(user){
@@ -2484,10 +2459,12 @@ onAuthStateChanged(auth,function(user){
     syncFromCloud();
   }else{
     updateLoginBtn(null);
-    setSyncStatus('Not signed in','rgba(255,255,255,0.4)');
   }
 });
 </script>
+
+</body>
+</html>
 
 </body>
 </html>
