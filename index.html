@@ -675,6 +675,8 @@
   </div>
   <div class="hdr-right" id="hdr-right" style="display:flex;align-items:center;gap:10px;">
     <span id="sync-status" style="font-size:10px;color:rgba(255,255,255,0.5);white-space:nowrap;"></span>
+    <button id="login-btn" onclick="googleLogin()" style="padding:5px 12px;border-radius:8px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">🔑 Sign in</button>
+    
     <div id="year-countdown" style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.75);letter-spacing:0.04em;white-space:nowrap;"></div>
     <button class="today-btn" onclick="goToday()">Today</button>
     <button class="today-btn" onclick="openStopwatch()">🕐</button>
@@ -2358,11 +2360,11 @@ document.addEventListener('keydown',function(e){
 });
 </script>
 
-<!-- Firebase -->
+<!-- Firebase Google Login -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCa2kj5b9nX5yRnkQfRCimw17logx4OibE",
@@ -2370,83 +2372,97 @@ const firebaseConfig = {
   projectId: "growplanner-e7d5e",
   storageBucket: "growplanner-e7d5e.firebasestorage.app",
   messagingSenderId: "37141081716",
-  appId: "1:37141081716:web:b368c25f1d024e50772b21",
-  measurementId: "G-2P0NMNR3MS"
+  appId: "1:37141081716:web:b368c25f1d024e50772b21"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-// Show sync status
-function setSyncStatus(msg, color){
+var syncTimer=null;
+var currentUserId=null;
+
+function setSyncStatus(msg,color){
   var el=document.getElementById('sync-status');
-  if(el){el.textContent=msg;el.style.color=color||'var(--muted)';}
+  if(el){el.textContent=msg;el.style.color=color||'rgba(255,255,255,0.5)';}
 }
 
-// Save all localStorage data to Firestore
-async function syncToCloud(userId){
-  try {
+async function syncToCloud(){
+  if(!currentUserId)return;
+  try{
     setSyncStatus('Syncing...','#F5A623');
     var data={};
     for(var i=0;i<localStorage.length;i++){
       var k=localStorage.key(i);
-      if(k&&k.startsWith('grow_')) data[k]=localStorage.getItem(k);
+      if(k&&k.startsWith('grow_'))data[k]=localStorage.getItem(k);
     }
-    await setDoc(doc(db,'users',userId),{data:data,updated:Date.now()});
+    await setDoc(doc(db,'users',currentUserId),{data:data,updated:Date.now()});
     setSyncStatus('✓ Synced','#50C878');
-  } catch(e){ setSyncStatus('Sync failed','#E8614A'); }
+  }catch(e){setSyncStatus('Sync failed','#E8614A');}
 }
 
-// Load from Firestore to localStorage
-async function syncFromCloud(userId){
-  try {
+async function syncFromCloud(){
+  if(!currentUserId)return;
+  try{
     setSyncStatus('Loading...','#F5A623');
-    var snap=await getDoc(doc(db,'users',userId));
+    var snap=await getDoc(doc(db,'users',currentUserId));
     if(snap.exists()){
       var data=snap.data().data||{};
-      Object.keys(data).forEach(function(k){ localStorage.setItem(k,data[k]); });
+      Object.keys(data).forEach(function(k){localStorage.setItem(k,data[k]);});
       setSyncStatus('✓ Synced','#50C878');
-      // Re-render with cloud data
-      if(typeof render==='function') render();
-    } else {
-      // No cloud data yet — push local to cloud
-      await syncToCloud(userId);
+      if(typeof render==='function')render();
+    }else{
+      await syncToCloud();
     }
-  } catch(e){ setSyncStatus('Offline','#E8614A'); }
+  }catch(e){setSyncStatus('Offline','#E8614A');}
 }
 
-// Intercept localStorage writes to auto-sync
-var _origSetItem=localStorage.setItem.bind(localStorage);
-var syncTimer=null;
+// Auto sync on data change
+var _orig=localStorage.setItem.bind(localStorage);
 localStorage.setItem=function(k,v){
-  _origSetItem(k,v);
-  if(k&&k.startsWith('grow_')&&window._fbUserId){
+  _orig(k,v);
+  if(k&&k.startsWith('grow_')&&currentUserId){
     clearTimeout(syncTimer);
-    syncTimer=setTimeout(function(){ syncToCloud(window._fbUserId); },2000);
+    syncTimer=setTimeout(syncToCloud,2000);
   }
 };
 
-// Auth + initial sync
-signInAnonymously(auth).then(function(){}).catch(function(e){ console.log('Auth error',e); });
+window.googleLogin=async function(){
+  try{await signInWithPopup(auth,provider);}
+  catch(e){alert('Login failed: '+e.message);}
+};
+
+window.googleLogout=async function(){
+  await signOut(auth);
+  currentUserId=null;
+  setSyncStatus('Not signed in','rgba(255,255,255,0.4)');
+  updateLoginBtn(null);
+};
+
+function updateLoginBtn(user){
+  var btn=document.getElementById('login-btn');
+  if(!btn)return;
+  if(user){
+    btn.textContent='👤 '+user.displayName.split(' ')[0];
+    btn.onclick=window.googleLogout;
+  }else{
+    btn.textContent='🔑 Sign in';
+    btn.onclick=window.googleLogin;
+  }
+}
 
 onAuthStateChanged(auth,function(user){
   if(user){
-    window._fbUserId=user.uid;
-    // Store UID in localStorage for cross-device (user needs to manually link)
-    var savedUid=localStorage.getItem('grow_uid');
-    if(!savedUid){
-      localStorage.setItem('grow_uid',user.uid);
-      syncFromCloud(user.uid);
-    } else if(savedUid===user.uid){
-      syncFromCloud(user.uid);
-    } else {
-      // Different device — use saved UID
-      window._fbUserId=savedUid;
-      syncFromCloud(savedUid);
-    }
+    currentUserId=user.uid;
+    updateLoginBtn(user);
+    syncFromCloud();
+  }else{
+    updateLoginBtn(null);
+    setSyncStatus('Not signed in','rgba(255,255,255,0.4)');
   }
 });
 </script>
+
 </body>
 </html>
