@@ -674,7 +674,6 @@
     <button class="nav-btn" onclick="chMo(1)">&#8594;</button>
   </div>
   <div class="hdr-right" id="hdr-right" style="display:flex;align-items:center;gap:10px;">
-    <span id="sync-status" style="font-size:10px;color:rgba(255,255,255,0.5);white-space:nowrap;"></span>
     <button id="login-btn" onclick="googleLogin()" style="padding:5px 12px;border-radius:8px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">🔑 Sign in</button>
     
     <div id="year-countdown" style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.75);letter-spacing:0.04em;white-space:nowrap;"></div>
@@ -768,9 +767,9 @@
     <span class="mn-icon">✍️</span>
     <span>Log</span>
   </button>
-  <button class="mobile-nav-btn" onclick="openStopwatch()">
-    <span class="mn-icon">🕐</span>
-    <span>Timer</span>
+  <button class="mobile-nav-btn" id="mobile-login-btn" onclick="googleLogin()">
+    <span class="mn-icon">🔑</span>
+    <span>Sign in</span>
   </button>
 </div>
 
@@ -2442,13 +2441,32 @@ window.googleLogout=async function(){
 
 function updateLoginBtn(user){
   var btn=document.getElementById('login-btn');
-  if(!btn)return;
-  if(user){
-    btn.textContent='👤 '+user.displayName.split(' ')[0];
-    btn.onclick=window.googleLogout;
-  }else{
-    btn.textContent='🔑 Sign in';
-    btn.onclick=window.googleLogin;
+  var mbtn=document.getElementById('mobile-login-btn');
+  if(btn){
+    if(user){
+      btn.textContent='👤 '+user.displayName.split(' ')[0];
+      btn.onclick=window.googleLogout;
+    }else{
+      btn.textContent='🔑 Sign in';
+      btn.onclick=window.googleLogin;
+    }
+  }
+  if(mbtn){
+    if(user){
+      mbtn.innerHTML='<span class="mn-icon">👤</span><span>'+user.displayName.split(' ')[0]+'</span>';
+      mbtn.onclick=window.googleLogout;
+    }else{
+      mbtn.innerHTML='<span class="mn-icon">🔑</span><span>Sign in</span>';
+      mbtn.onclick=window.googleLogin;
+    }
+  }
+}
+
+function setSyncStatus(msg,color){
+  var btn=document.getElementById('login-btn');
+  if(btn&&currentUserId){
+    var name=btn.textContent.replace(/\s*·.*/,'').replace('👤 ','');
+    btn.textContent='👤 '+name+' · '+msg;
   }
 }
 
