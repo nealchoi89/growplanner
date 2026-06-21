@@ -38,10 +38,9 @@
     display: -webkit-flex; display: flex;
     -webkit-align-items: center; align-items: center;
     -webkit-justify-content: space-between; justify-content: space-between;
-    position: -webkit-sticky; position: sticky;
+    position: sticky;
     top: 0; z-index: 100;
     box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    position: relative;
   }
   .logo { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 0.1em; }
   .logo-sub { font-size: 10px; color: #B8D4F0; font-weight: 400; margin-left: 8px; letter-spacing: 0.12em; opacity: 0.9; }
@@ -668,10 +667,10 @@
     <span class="logo">GROW</span><span style="font-size:14px;font-weight:400;color:rgba(255,255,255,0.7);margin-left:6px;letter-spacing:0.04em;">Planner</span>
     <span class="logo-sub">Grind · Revenue · Own Life · Wings</span>
   </div>
-  <div style="position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;">
-    <button class="nav-btn" onclick="chMo(-1)">&#8592;</button>
+  <div style="position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;pointer-events:none;">
+    <button style="pointer-events:all;" class="nav-btn" onclick="chMo(-1)">&#8592;</button>
     <div class="month-lbl" id="mlbl"></div>
-    <button class="nav-btn" onclick="chMo(1)">&#8594;</button>
+    <button style="pointer-events:all;" class="nav-btn" onclick="chMo(1)">&#8594;</button>
   </div>
   <div class="hdr-right" id="hdr-right" style="display:flex;align-items:center;gap:10px;">
     <button id="login-btn" onclick="googleLogin()" style="padding:5px 12px;border-radius:8px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">🔑 Sign in</button>
@@ -2442,9 +2441,11 @@ window.googleLogout=async function(){
 function updateLoginBtn(user){
   var btn=document.getElementById('login-btn');
   var mbtn=document.getElementById('mobile-login-btn');
+  var name=user?user.displayName.split(' ')[0]:'';
   if(btn){
     if(user){
-      btn.textContent='👤 '+user.displayName.split(' ')[0];
+      btn.dataset.name=name;
+      btn.textContent='👤 '+name;
       btn.onclick=window.googleLogout;
     }else{
       btn.textContent='🔑 Sign in';
@@ -2453,7 +2454,8 @@ function updateLoginBtn(user){
   }
   if(mbtn){
     if(user){
-      mbtn.innerHTML='<span class="mn-icon">👤</span><span>'+user.displayName.split(' ')[0]+'</span>';
+      mbtn.dataset.name=name;
+      mbtn.innerHTML='<span class="mn-icon">👤</span><span>'+name+'</span>';
       mbtn.onclick=window.googleLogout;
     }else{
       mbtn.innerHTML='<span class="mn-icon">🔑</span><span>Sign in</span>';
@@ -2465,8 +2467,13 @@ function updateLoginBtn(user){
 function setSyncStatus(msg,color){
   var btn=document.getElementById('login-btn');
   if(btn&&currentUserId){
-    var name=btn.textContent.replace(/\s*·.*/,'').replace('👤 ','');
-    btn.textContent='👤 '+name+' · '+msg;
+    var name=btn.dataset.name||'';
+    btn.textContent='👤 '+name+(msg?' · '+msg:'');
+  }
+  var mbtn=document.getElementById('mobile-login-btn');
+  if(mbtn&&currentUserId){
+    var mname=mbtn.dataset.name||'';
+    mbtn.innerHTML='<span class="mn-icon">👤</span><span>'+(msg?msg:'✓')+'</span>';
   }
 }
 
