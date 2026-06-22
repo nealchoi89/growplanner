@@ -2442,15 +2442,11 @@ function updateLoginBtn(user){
 
 window.googleLogin=async function(){
   try{
-    await signInWithPopup(auth,provider);
+    // Always use redirect - works on both mobile and desktop
+    await signInWithRedirect(auth,provider);
   }
   catch(e){
-    if(e.code==='auth/popup-blocked'){
-      // Fallback to redirect if popup blocked
-      await signInWithRedirect(auth,provider);
-    } else {
-      alert('Login failed: '+e.message);
-    }
+    alert('Login failed: '+e.message);
   }
 };
 
