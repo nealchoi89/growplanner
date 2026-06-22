@@ -663,16 +663,16 @@
 <body>
 
 <div class="hdr">
-  <div>
+  <div style="position:relative;z-index:1;">
     <span class="logo">GROW</span><span style="font-size:14px;font-weight:400;color:rgba(255,255,255,0.7);margin-left:6px;letter-spacing:0.04em;">Planner</span>
     <span class="logo-sub">Grind · Revenue · Own Life · Wings</span>
   </div>
-  <div style="position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;pointer-events:none;">
+  <div style="position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px;z-index:0;pointer-events:none;">
     <button style="pointer-events:all;" class="nav-btn" onclick="chMo(-1)">&#8592;</button>
     <div class="month-lbl" id="mlbl"></div>
     <button style="pointer-events:all;" class="nav-btn" onclick="chMo(1)">&#8594;</button>
   </div>
-  <div class="hdr-right" id="hdr-right" style="display:flex;align-items:center;gap:10px;">
+  <div class="hdr-right" id="hdr-right" style="display:flex;align-items:center;gap:10px;position:relative;z-index:1;">
     <button id="login-btn" onclick="googleLogin()" style="padding:5px 12px;border-radius:8px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;">🔑 Sign in</button>
     
     <div id="year-countdown" style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.75);letter-spacing:0.04em;white-space:nowrap;"></div>
@@ -2362,7 +2362,7 @@ document.addEventListener('keydown',function(e){
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getAuth, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCa2kj5b9nX5yRnkQfRCimw17logx4OibE",
@@ -2442,7 +2442,14 @@ function updateLoginBtn(user){
 }
 
 window.googleLogin=async function(){
-  try{await signInWithPopup(auth,provider);}
+  try{
+    var isMobile=window.innerWidth<=700;
+    if(isMobile){
+      await signInWithRedirect(auth,provider);
+    } else {
+      await signInWithPopup(auth,provider);
+    }
+  }
   catch(e){alert('Login failed: '+e.message);}
 };
 
@@ -2461,6 +2468,15 @@ onAuthStateChanged(auth,function(user){
     updateLoginBtn(null);
   }
 });
+
+// Handle redirect result on mobile
+getRedirectResult(auth).then(function(result){
+  if(result&&result.user){
+    currentUserId=result.user.uid;
+    updateLoginBtn(result.user);
+    syncFromCloud();
+  }
+}).catch(function(e){ console.log('Redirect error:',e); });
 </script>
 
 </body>
