@@ -2442,14 +2442,16 @@ function updateLoginBtn(user){
 
 window.googleLogin=async function(){
   try{
-    var isMobile=window.innerWidth<=700;
-    if(isMobile){
+    await signInWithPopup(auth,provider);
+  }
+  catch(e){
+    if(e.code==='auth/popup-blocked'){
+      // Fallback to redirect if popup blocked
       await signInWithRedirect(auth,provider);
     } else {
-      await signInWithPopup(auth,provider);
+      alert('Login failed: '+e.message);
     }
   }
-  catch(e){alert('Login failed: '+e.message);}
 };
 
 window.googleLogout=async function(){
